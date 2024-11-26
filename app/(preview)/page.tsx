@@ -30,6 +30,9 @@ export default function ChatWithFiles() {
   );
   const [isDragging, setIsDragging] = useState(false);
   const [title, setTitle] = useState<string>();
+  const [encodedFiles, setEncodedFiles] = useState<
+    Array<{ name: string; type: string; data: string }>
+  >([]);
 
   const {
     submit,
@@ -62,7 +65,6 @@ export default function ChatWithFiles() {
     const validFiles = selectedFiles.filter(
       (file) => file.type === 'application/pdf' && file.size <= 5 * 1024 * 1024
     );
-    console.log(validFiles);
 
     if (validFiles.length !== selectedFiles.length) {
       toast.error('Only PDF files under 5MB are allowed.');
@@ -82,28 +84,52 @@ export default function ChatWithFiles() {
 
   const handleSubmitWithFiles = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const encodedFiles = await Promise.all(
+    const encoded = await Promise.all(
       files.map(async (file) => ({
         name: file.name,
         type: file.type,
         data: await encodeFileAsBase64(file),
       }))
     );
-    submit({ files: encodedFiles });
-    const generatedTitle = await generateQuizTitle(encodedFiles[0].name);
+    setEncodedFiles(encoded);
+    submit({ files: encoded });
+    const generatedTitle = await generateQuizTitle(encoded[0].name);
     setTitle(generatedTitle);
+  };
+
+  const generateMoreQuestions = async () => {
+    const result = await fetch('/api/generate-quiz', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ files: encodedFiles }),
+    });
+
+    if (!result.ok) {
+      throw new Error('Failed to generate more questions');
+    }
+
+    const data = await result.json();
+    return data;
   };
 
   const clearPDF = () => {
     setFiles([]);
     setQuestions([]);
+    setEncodedFiles([]);
   };
 
   const progress = partialQuestions ? (partialQuestions.length / 4) * 100 : 0;
 
   if (questions.length === 4) {
     return (
-      <Quiz title={title ?? 'Quiz'} questions={questions} clearPDF={clearPDF} />
+      <Quiz
+        title={title ?? 'Quiz'}
+        questions={questions}
+        clearPDF={clearPDF}
+        onNeedMoreQuestions={generateMoreQuestions}
+      />
     );
   }
 

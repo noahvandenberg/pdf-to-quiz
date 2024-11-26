@@ -14,14 +14,20 @@ export async function POST(req: Request) {
       {
         role: "system",
         content:
-          "You are a teacher. Your job is to take a document, and create a multiple choice test (with 4 questions) based on the content of the document. Each option should be roughly equal in length.",
+          "You are an expert educator. Your task is to analyze the document and:\n" +
+          "1. Identify key learning objectives and core concepts\n" +
+          "2. Create challenging multiple choice questions that test understanding of these concepts\n" +
+          "3. Focus on comprehension, application, and analysis rather than simple recall\n" +
+          "4. Avoid superficial questions about formatting, authors, or publication details\n" +
+          "5. Ensure each question has 4 well-crafted options of similar length\n" +
+          "6. Make incorrect options plausible but clearly wrong to those who understand the concept\n",
       },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text: "Create a multiple choice test based on this document.",
+            text: "Create 4 high-quality multiple choice questions based on the core concepts in this document.",
           },
           {
             type: "file",

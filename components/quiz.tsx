@@ -2,14 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  X,
-  RefreshCw,
-  FileText,
-} from 'lucide-react';
+import { ChevronRight, Check, X, RefreshCw, FileText } from 'lucide-react';
 import QuizScore from './score';
 import QuizReview from './quiz-overview';
 import { Question } from '@/lib/schemas';
@@ -18,6 +11,7 @@ type QuizProps = {
   questions: Question[];
   clearPDF: () => void;
   title: string;
+  onNeedMoreQuestions: () => Promise<Question[]>;
 };
 
 const QuestionCard: React.FC<{
@@ -82,19 +76,41 @@ const QuestionCard: React.FC<{
 };
 
 export default function Quiz({
-  questions,
+  questions: initialQuestions,
   clearPDF,
   title = 'Quiz',
+  onNeedMoreQuestions,
 }: QuizProps) {
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<string[]>(
-    Array(questions.length).fill(null)
-  );
+  const [answers, setAnswers] = useState<string[]>([]);
   const [score, setScore] = useState(0);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [progress, setProgress] = useState(0);
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Preload more questions when we're 2 questions away from the end
+  useEffect(() => {
+    const loadMoreIfNeeded = async () => {
+      if (
+        currentQuestionIndex >= questions.length - 2 &&
+        !isLoadingMore &&
+        !isComplete
+      ) {
+        setIsLoadingMore(true);
+        try {
+          const newQuestions = await onNeedMoreQuestions();
+          setQuestions((prevQuestions) => [...prevQuestions, ...newQuestions]);
+        } catch (error) {
+          console.error('Failed to load more questions:', error);
+        }
+        setIsLoadingMore(false);
+      }
+    };
+    loadMoreIfNeeded();
+  }, [currentQuestionIndex, questions.length, isLoadingMore, isComplete]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -110,7 +126,6 @@ export default function Quiz({
       setAnswers(newAnswers);
       setHasAnswered(true);
 
-      // Update score and feedback immediately
       const isCorrect = answer === questions[currentQuestionIndex].answer;
       if (isCorrect) {
         setScore((prev) => prev + 1);
@@ -124,21 +139,23 @@ export default function Quiz({
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setHasAnswered(false);
-    } else {
-      setIsComplete(true);
-    }
+    setCurrentQuestionIndex(currentQuestionIndex + 1);
+    setHasAnswered(false);
+    setFeedbackMessage('');
+  };
+
+  const handleShowResults = () => {
+    setIsComplete(true);
   };
 
   const handleReset = () => {
-    setAnswers(Array(questions.length).fill(null));
+    setAnswers([]);
     setCurrentQuestionIndex(0);
     setScore(0);
     setHasAnswered(false);
     setIsComplete(false);
     setProgress(0);
+    setQuestions(initialQuestions);
   };
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -181,42 +198,38 @@ export default function Quiz({
                     )}
                     <div className='flex justify-between items-center pt-4'>
                       <span className='text-sm font-medium'>
-                        Question {currentQuestionIndex + 1} of{' '}
-                        {questions.length}
+                        Question {currentQuestionIndex + 1}
                       </span>
-                      {hasAnswered && (
-                        <Button
-                          onClick={() => {
-                            handleNextQuestion();
-                            setFeedbackMessage(''); // Clear feedback when moving to next question
-                          }}
-                          variant='ghost'
-                        >
-                          {currentQuestionIndex === questions.length - 1
-                            ? 'See Results'
-                            : 'Next Question'}{' '}
-                          <ChevronRight className='ml-2 h-4 w-4' />
+                      <div className='space-x-4'>
+                        {hasAnswered && (
+                          <Button onClick={handleNextQuestion} variant='ghost'>
+                            Next Question{' '}
+                            <ChevronRight className='ml-2 h-4 w-4' />
+                          </Button>
+                        )}
+                        <Button onClick={handleShowResults} variant='outline'>
+                          Show Results
                         </Button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 ) : (
                   <div className='space-y-8'>
                     <QuizScore
                       correctAnswers={score}
-                      totalQuestions={questions.length}
+                      totalQuestions={answers.length}
                     />
-                    <QuizReview questions={questions} userAnswers={answers} />
+                    <QuizReview
+                      questions={questions.slice(0, answers.length)}
+                      userAnswers={answers}
+                    />
                     <div className='flex justify-center space-x-4 pt-4'>
                       <Button
-                        onClick={() => {
-                          handleReset();
-                          setFeedbackMessage(''); // Clear feedback on reset
-                        }}
+                        onClick={handleReset}
                         variant='outline'
                         className='bg-muted hover:bg-muted/80 w-full'
                       >
-                        <RefreshCw className='mr-2 h-4 w-4' /> Try Again
+                        <RefreshCw className='mr-2 h-4 w-4' /> Continue Quiz
                       </Button>
                       <Button
                         onClick={clearPDF}
