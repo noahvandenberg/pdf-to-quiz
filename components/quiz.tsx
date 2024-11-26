@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,10 +9,10 @@ import {
   X,
   RefreshCw,
   FileText,
-} from "lucide-react";
-import QuizScore from "./score";
-import QuizReview from "./quiz-overview";
-import { Question } from "@/lib/schemas";
+} from 'lucide-react';
+import QuizScore from './score';
+import QuizReview from './quiz-overview';
+import { Question } from '@/lib/schemas';
 
 type QuizProps = {
   questions: Question[];
@@ -24,49 +24,58 @@ const QuestionCard: React.FC<{
   question: Question;
   selectedAnswer: string | null;
   onSelectAnswer: (answer: string) => void;
-  isSubmitted: boolean;
   showCorrectAnswer: boolean;
 }> = ({ question, selectedAnswer, onSelectAnswer, showCorrectAnswer }) => {
-  const answerLabels = ["A", "B", "C", "D"];
+  const answerLabels = ['A', 'B', 'C', 'D'];
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-semibold leading-tight">
+    <div className='space-y-6'>
+      <h2 className='text-lg font-semibold leading-tight'>
         {question.question}
       </h2>
-      <div className="grid grid-cols-1 gap-4">
-        {question.options.map((option, index) => (
-          <Button
-            key={index}
-            variant={
-              selectedAnswer === answerLabels[index] ? "secondary" : "outline"
-            }
-            className={`h-auto py-6 px-4 justify-start text-left whitespace-normal ${
-              showCorrectAnswer && answerLabels[index] === question.answer
-                ? "bg-green-600 hover:bg-green-700"
-                : showCorrectAnswer &&
-                    selectedAnswer === answerLabels[index] &&
-                    selectedAnswer !== question.answer
-                  ? "bg-red-600 hover:bg-red-700"
-                  : ""
-            }`}
-            onClick={() => onSelectAnswer(answerLabels[index])}
-          >
-            <span className="text-lg font-medium mr-4 shrink-0">
-              {answerLabels[index]}
-            </span>
-            <span className="flex-grow">{option}</span>
-            {(showCorrectAnswer && answerLabels[index] === question.answer) ||
-              (selectedAnswer === answerLabels[index] && (
-                <Check className="ml-2 shrink-0 dark:text-white text-black" size={20} />
-              ))}
-            {showCorrectAnswer &&
-              selectedAnswer === answerLabels[index] &&
-              selectedAnswer !== question.answer && (
-                <X className="ml-2 shrink-0 text-white" size={20} />
+      <div className='grid grid-cols-1 gap-4'>
+        {question.options.map((option, index) => {
+          const currentLabel = answerLabels[index];
+          const isCorrect = currentLabel === question.answer;
+          const isSelected = currentLabel === selectedAnswer;
+          const isIncorrectSelection = isSelected && !isCorrect;
+
+          return (
+            <Button
+              key={index}
+              variant='outline'
+              className={`h-auto py-6 px-4 justify-start text-left whitespace-normal ${
+                showCorrectAnswer
+                  ? isCorrect
+                    ? 'bg-green-100 dark:bg-green-700/50 hover:bg-green-100 dark:hover:bg-green-700/50'
+                    : isIncorrectSelection
+                    ? 'bg-red-100 dark:bg-red-700/50 hover:bg-red-100 dark:hover:bg-red-700/50'
+                    : 'hover:bg-accent'
+                  : isSelected
+                  ? 'bg-secondary'
+                  : ''
+              }`}
+              onClick={() => !showCorrectAnswer && onSelectAnswer(currentLabel)}
+            >
+              <span className='text-lg font-medium mr-4 shrink-0'>
+                {currentLabel}
+              </span>
+              <span className='flex-grow'>{option}</span>
+              {showCorrectAnswer && isCorrect && (
+                <Check
+                  className='ml-2 shrink-0 text-green-600 dark:text-green-400'
+                  size={20}
+                />
               )}
-          </Button>
-        ))}
+              {showCorrectAnswer && isIncorrectSelection && (
+                <X
+                  className='ml-2 shrink-0 text-red-600 dark:text-red-400'
+                  size={20}
+                />
+              )}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
@@ -75,15 +84,17 @@ const QuestionCard: React.FC<{
 export default function Quiz({
   questions,
   clearPDF,
-  title = "Quiz",
+  title = 'Quiz',
 }: QuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>(
-    Array(questions.length).fill(null),
+    Array(questions.length).fill(null)
   );
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [score, setScore] = useState<number | null>(null);
+  const [score, setScore] = useState(0);
+  const [hasAnswered, setHasAnswered] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [feedbackMessage, setFeedbackMessage] = useState<string>('');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -93,118 +104,125 @@ export default function Quiz({
   }, [currentQuestionIndex, questions.length]);
 
   const handleSelectAnswer = (answer: string) => {
-    if (!isSubmitted) {
+    if (!hasAnswered) {
       const newAnswers = [...answers];
       newAnswers[currentQuestionIndex] = answer;
       setAnswers(newAnswers);
+      setHasAnswered(true);
+
+      // Update score and feedback immediately
+      const isCorrect = answer === questions[currentQuestionIndex].answer;
+      if (isCorrect) {
+        setScore((prev) => prev + 1);
+        setFeedbackMessage('Correct! 🎉');
+      } else {
+        setFeedbackMessage(
+          `Incorrect. The correct answer was ${questions[currentQuestionIndex].answer}`
+        );
+      }
     }
   };
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setHasAnswered(false);
     } else {
-      handleSubmit();
+      setIsComplete(true);
     }
-  };
-
-  const handlePreviousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
-  };
-
-  const handleSubmit = () => {
-    setIsSubmitted(true);
-    const correctAnswers = questions.reduce((acc, question, index) => {
-      return acc + (question.answer === answers[index] ? 1 : 0);
-    }, 0);
-    setScore(correctAnswers);
   };
 
   const handleReset = () => {
     setAnswers(Array(questions.length).fill(null));
-    setIsSubmitted(false);
-    setScore(null);
     setCurrentQuestionIndex(0);
+    setScore(0);
+    setHasAnswered(false);
+    setIsComplete(false);
     setProgress(0);
   };
 
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8 text-center text-foreground">
+    <div className='min-h-screen bg-background text-foreground'>
+      <main className='container mx-auto px-4 py-12 max-w-4xl'>
+        <h1 className='text-3xl font-bold mb-8 text-center text-foreground'>
           {title}
         </h1>
-        <div className="relative">
-          {!isSubmitted && <Progress value={progress} className="h-1 mb-8" />}
-          <div className="min-h-[400px]">
-            {" "}
-            {/* Prevent layout shift */}
-            <AnimatePresence mode="wait">
+        <div className='relative'>
+          {!isComplete && <Progress value={progress} className='h-1 mb-8' />}
+          <div className='min-h-[400px]'>
+            <AnimatePresence mode='wait'>
               <motion.div
-                key={isSubmitted ? "results" : currentQuestionIndex}
-                initial={{ opacity: 1 }}
+                key={isComplete ? 'results' : currentQuestionIndex}
+                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                {!isSubmitted ? (
-                  <div className="space-y-8">
+                {!isComplete ? (
+                  <div className='space-y-8'>
                     <QuestionCard
                       question={currentQuestion}
                       selectedAnswer={answers[currentQuestionIndex]}
                       onSelectAnswer={handleSelectAnswer}
-                      isSubmitted={isSubmitted}
-                      showCorrectAnswer={false}
+                      showCorrectAnswer={hasAnswered}
                     />
-                    <div className="flex justify-between items-center pt-4">
-                      <Button
-                        onClick={handlePreviousQuestion}
-                        disabled={currentQuestionIndex === 0}
-                        variant="ghost"
+                    {hasAnswered && (
+                      <div
+                        className={`text-center font-medium text-lg ${
+                          feedbackMessage.includes('Correct')
+                            ? 'text-green-500 dark:text-green-400'
+                            : 'text-red-500 dark:text-red-400'
+                        }`}
                       >
-                        <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-                      </Button>
-                      <span className="text-sm font-medium">
-                        {currentQuestionIndex + 1} / {questions.length}
+                        {feedbackMessage}
+                      </div>
+                    )}
+                    <div className='flex justify-between items-center pt-4'>
+                      <span className='text-sm font-medium'>
+                        Question {currentQuestionIndex + 1} of{' '}
+                        {questions.length}
                       </span>
-                      <Button
-                        onClick={handleNextQuestion}
-                        disabled={answers[currentQuestionIndex] === null}
-                        variant="ghost"
-                      >
-                        {currentQuestionIndex === questions.length - 1
-                          ? "Submit"
-                          : "Next"}{" "}
-                        <ChevronRight className="ml-2 h-4 w-4" />
-                      </Button>
+                      {hasAnswered && (
+                        <Button
+                          onClick={() => {
+                            handleNextQuestion();
+                            setFeedbackMessage(''); // Clear feedback when moving to next question
+                          }}
+                          variant='ghost'
+                        >
+                          {currentQuestionIndex === questions.length - 1
+                            ? 'See Results'
+                            : 'Next Question'}{' '}
+                          <ChevronRight className='ml-2 h-4 w-4' />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-8">
+                  <div className='space-y-8'>
                     <QuizScore
-                      correctAnswers={score ?? 0}
+                      correctAnswers={score}
                       totalQuestions={questions.length}
                     />
-                    <div className="space-y-12">
-                      <QuizReview questions={questions} userAnswers={answers} />
-                    </div>
-                    <div className="flex justify-center space-x-4 pt-4">
+                    <QuizReview questions={questions} userAnswers={answers} />
+                    <div className='flex justify-center space-x-4 pt-4'>
                       <Button
-                        onClick={handleReset}
-                        variant="outline"
-                        className="bg-muted hover:bg-muted/80 w-full"
+                        onClick={() => {
+                          handleReset();
+                          setFeedbackMessage(''); // Clear feedback on reset
+                        }}
+                        variant='outline'
+                        className='bg-muted hover:bg-muted/80 w-full'
                       >
-                        <RefreshCw className="mr-2 h-4 w-4" /> Reset Quiz
+                        <RefreshCw className='mr-2 h-4 w-4' /> Try Again
                       </Button>
                       <Button
                         onClick={clearPDF}
-                        className="bg-primary hover:bg-primary/90 w-full"
+                        className='bg-primary hover:bg-primary/90 w-full'
                       >
-                        <FileText className="mr-2 h-4 w-4" /> Try Another PDF
+                        <FileText className='mr-2 h-4 w-4' /> Try Another PDF
                       </Button>
                     </div>
                   </div>
