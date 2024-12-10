@@ -2,7 +2,8 @@ import { questionSchema, questionsSchema } from "@/lib/schemas";
 import { google } from "@ai-sdk/google";
 import { streamObject } from "ai";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
+
 
 export async function POST(req: Request) {
   const { files } = await req.json();
