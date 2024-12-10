@@ -2,10 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ChevronRight, Check, X, RefreshCw, FileText } from 'lucide-react';
+import {
+  ChevronRight,
+  Check,
+  X,
+  RefreshCw,
+  FileText,
+  BookOpen,
+} from 'lucide-react';
 import QuizScore from './score';
 import QuizReview from './quiz-overview';
 import { Question } from '@/lib/schemas';
+import { Card, CardContent } from '@/components/ui/card';
 
 type QuizProps = {
   questions: Question[];
@@ -90,6 +98,7 @@ export default function Quiz({
   const [progress, setProgress] = useState(0);
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
 
   // Preload more questions when we're 2 questions away from the end
   useEffect(() => {
@@ -142,6 +151,7 @@ export default function Quiz({
     setCurrentQuestionIndex(currentQuestionIndex + 1);
     setHasAnswered(false);
     setFeedbackMessage('');
+    setShowExplanation(false);
   };
 
   const handleShowResults = () => {
@@ -156,9 +166,12 @@ export default function Quiz({
     setIsComplete(false);
     setProgress(0);
     setQuestions(initialQuestions);
+    setShowExplanation(false);
   };
 
   const currentQuestion = questions[currentQuestionIndex];
+  const userAnswer = answers[currentQuestionIndex];
+  const answerLabels = ['A', 'B', 'C', 'D'];
 
   return (
     <div className='min-h-screen bg-background text-foreground'>
@@ -186,15 +199,68 @@ export default function Quiz({
                       showCorrectAnswer={hasAnswered}
                     />
                     {hasAnswered && (
-                      <div
-                        className={`text-center font-medium text-lg ${
-                          feedbackMessage.includes('Correct')
-                            ? 'text-green-500 dark:text-green-400'
-                            : 'text-red-500 dark:text-red-400'
-                        }`}
-                      >
-                        {feedbackMessage}
-                      </div>
+                      <>
+                        <div
+                          className={`text-center font-medium text-lg ${
+                            feedbackMessage.includes('Correct')
+                              ? 'text-green-500 dark:text-green-400'
+                              : 'text-red-500 dark:text-red-400'
+                          }`}
+                        >
+                          {feedbackMessage}
+                        </div>
+                        {!feedbackMessage.includes('Correct') &&
+                          !showExplanation && (
+                            <div className='flex justify-center'>
+                              <Button
+                                onClick={() => setShowExplanation(true)}
+                                variant='outline'
+                                className='bg-muted'
+                              >
+                                <BookOpen className='mr-2 h-4 w-4' />
+                                Explain This Concept
+                              </Button>
+                            </div>
+                          )}
+                        {showExplanation && (
+                          <Card className='bg-muted'>
+                            <CardContent className='pt-6'>
+                              <h3 className='font-semibold mb-2'>
+                                Explanation:
+                              </h3>
+                              <p className='text-muted-foreground whitespace-pre-wrap'>
+                                {currentQuestion.explanation}
+                              </p>
+                              <div className='mt-4 text-sm text-muted-foreground'>
+                                <p>
+                                  <span className='font-medium'>
+                                    Your answer:
+                                  </span>{' '}
+                                  Option {userAnswer} -{' '}
+                                  {
+                                    currentQuestion.options[
+                                      answerLabels.indexOf(userAnswer)
+                                    ]
+                                  }
+                                </p>
+                                <p>
+                                  <span className='font-medium'>
+                                    Correct answer:
+                                  </span>{' '}
+                                  Option {currentQuestion.answer} -{' '}
+                                  {
+                                    currentQuestion.options[
+                                      answerLabels.indexOf(
+                                        currentQuestion.answer
+                                      )
+                                    ]
+                                  }
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </>
                     )}
                     <div className='flex justify-between items-center pt-4'>
                       <span className='text-sm font-medium'>

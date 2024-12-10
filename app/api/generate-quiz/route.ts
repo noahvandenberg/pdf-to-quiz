@@ -20,14 +20,19 @@ export async function POST(req: Request) {
           "3. Focus on comprehension, application, and analysis rather than simple recall\n" +
           "4. Avoid superficial questions about formatting, authors, or publication details\n" +
           "5. Ensure each question has 4 well-crafted options of similar length\n" +
-          "6. Make incorrect options plausible but clearly wrong to those who understand the concept\n",
+          "6. Make incorrect options plausible but clearly wrong to those who understand the concept\n" +
+          "7. For each question, provide a detailed explanation that:\n" +
+          "   - Explains why the correct answer is right\n" +
+          "   - Connects the answer to the core concept being tested\n" +
+          "   - Helps learners understand common misconceptions\n" +
+          "   - Uses examples or analogies when helpful\n",
       },
       {
         role: "user",
         content: [
           {
             type: "text",
-            text: "Create 4 high-quality multiple choice questions based on the core concepts in this document.",
+            text: "Create 4 high-quality multiple choice questions based on the core concepts in this document. Include detailed explanations for each question.",
           },
           {
             type: "file",
